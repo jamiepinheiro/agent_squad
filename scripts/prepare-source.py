@@ -155,7 +155,7 @@ with tarfile.open(output, 'w:gz') as output_archive:
         for entry in package['archives']:
             if entry['file'] in added: continue
             added.add(entry['file'])
-            output_archive.add(download(entry['url']), arcname=entry['file'], recursive=False)
+            add_bytes(output_archive, entry['file'], download(entry['url']).read_bytes())
 print(f'Prepared {output.name}: {len(packages)} dependencies, {len(added)} source archives, revision {revision}')
 # Used by release.py to bind the binary, source and published revision together.
 (root / '.build/release').mkdir(exist_ok=True)
