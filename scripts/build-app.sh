@@ -54,6 +54,15 @@ cp package.json package-lock.json "$app/Contents/Resources/"
 # Production dependencies are copied from the lockfile installation; no network at app launch.
 python3 scripts/package-dependencies.py "$app/Contents/Resources"
 if [ -f LICENSE ]; then cp LICENSE "$app/Contents/Resources/LICENSE"; fi
+if [ -n "${AGENT_SQUAD_SOURCE_REVISION:-}" ]; then
+  python3 - "$app/Contents/Resources/BUILD-INFO.json" <<'PYINFO'
+import json, os, pathlib, sys
+pathlib.Path(sys.argv[1]).write_text(json.dumps({
+    'revision': os.environ['AGENT_SQUAD_SOURCE_REVISION'],
+    'repository': 'https://github.com/jamiepinheiro/agent-squad',
+}, indent=2) + '\n')
+PYINFO
+fi
 cat > "$app/Contents/Info.plist" <<'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">

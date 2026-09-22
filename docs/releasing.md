@@ -11,6 +11,8 @@ The initial binary target is Apple Silicon, macOS 14+. Intel users can build fro
 
 The release uses a pinned official Node runtime and verifies its archive checksum. Dependencies are installed from the lockfile into an isolated production-only bundle. Source builds and the public repository contain no developer account configuration.
 
+Commit the audited source before building. The release build embeds its Git revision, mirrors the installed dependencies’ published source archives and pinned upstream sources, and creates a source archive from committed files. Local verification scripts and account data never enter that source checkout. Upstream source archives retain their original contents and licenses. Review `SOURCE-MANIFEST.json` in the source archive for dependency-source coverage before publishing.
+
 ## Workflow
 
 ```sh
@@ -27,6 +29,6 @@ npm run release -- finish
 
 Inspect an existing submission with `xcrun notarytool info SUBMISSION_ID --keychain-profile agent-squad-notary`. Use `notarytool log` for rejection details. The script stores submission IDs locally and avoids duplicate submission of an unchanged artifact. Notarization may take time; do not restart a live submission.
 
-Publish the DMG, corresponding source archive, and `dist/SHA256SUMS` as assets on a versioned GitHub Release only after [verification](verification.md) and [distribution licensing](distribution-licensing.md). Users drag the app into Applications. Signing and notarization do not grant Contacts, Full Disk Access, or Messages Automation; each user grants those during setup.
+Publish the DMG, corresponding source archive, `dist/RELEASE-MANIFEST.json`, and `dist/SHA256SUMS` as assets on a versioned GitHub Release only after [verification](verification.md) and [distribution licensing](distribution-licensing.md). Users drag the app into Applications. Signing and notarization do not grant Contacts, Full Disk Access, or Messages Automation; each user grants those during setup.
 
 There is no automatic updater in this release. Users can download a newer DMG and replace the app after quitting. Their configuration stays in Application Support and Keychain.
