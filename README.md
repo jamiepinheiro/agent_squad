@@ -127,4 +127,4 @@ See [architecture](docs/architecture.md), [development](docs/development.md), an
 
 ## License
 
-[MIT](LICENSE). Bundled third-party dependencies retain their own licenses.
+Agent Squad's original source is [MIT](LICENSE). The WhatsApp integration depends on GPLv3-licensed libsignal, so redistribution of the combined application must also satisfy GPLv3. See [distribution licensing](docs/distribution-licensing.md).

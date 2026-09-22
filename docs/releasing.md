@@ -27,6 +27,6 @@ npm run release -- finish
 
 Inspect an existing submission with `xcrun notarytool info SUBMISSION_ID --keychain-profile agent-squad-notary`. Use `notarytool log` for rejection details. The script stores submission IDs locally and avoids duplicate submission of an unchanged artifact. Notarization may take time; do not restart a live submission.
 
-Publish the DMG and `dist/SHA256SUMS` as assets on a versioned GitHub Release only after [verification](verification.md). Users drag the app into Applications. Signing and notarization do not grant Contacts, Full Disk Access, or Messages Automation; each user grants those during setup.
+Publish the DMG, corresponding source archive, and `dist/SHA256SUMS` as assets on a versioned GitHub Release only after [verification](verification.md) and [distribution licensing](distribution-licensing.md). Users drag the app into Applications. Signing and notarization do not grant Contacts, Full Disk Access, or Messages Automation; each user grants those during setup.
 
 There is no automatic updater in this release. Users can download a newer DMG and replace the app after quitting. Their configuration stays in Application Support and Keychain.

@@ -37,3 +37,5 @@ for p in sorted(modules.rglob('package.json')):
     if item.get('name') and item.get('version'):
         notices.append(f"- {item['name']} {item['version']} — {item.get('license', 'see package license files')}")
 (resources / 'THIRD-PARTY-NOTICES.md').write_text('\n'.join(notices) + '\n')
+shutil.copy2(root / 'docs/licenses/GPL-3.0.txt', resources / 'GPL-3.0.txt')
+shutil.copy2(root / 'docs/distribution-licensing.md', resources / 'DISTRIBUTION-LICENSING.md')
