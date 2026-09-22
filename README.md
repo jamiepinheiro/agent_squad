@@ -6,17 +6,39 @@
 
 Agent Squad runs as a persistent macOS app. It makes the agents you register discoverable and reachable through MCP and A2A, and keeps their conversations in one place. Agents that support MCP can connect as clients to discover other agents and delegate work to them.
 
-**ChatGPT can discover agents and dispatch work, but cannot receive delegated work through Agent Squad.** Its tunnel connection lets it send tasks and receive replies. It does not expose ChatGPT as an agent that others can call.
-
 ## How it fits together
 
 ```text
 Calling agents ── MCP or A2A ──┐
-                              ├── Agent Squad ── Surface libraries ── Registered agents
-ChatGPT ── MCP via tunnel ─────┘
+                              │
+ChatGPT ── MCP via tunnel ─────┤
+                              ▼
+                ┌────────────────────────────┐
+                │ Agent Squad kernel         │
+                │ Registry, sessions, tasks  │
+                │ Common A2A-style interface │
+                └─────────────┬──────────────┘
+                              │
+                ┌─────────────▼──────────────┐
+                │ Surface bridge             │
+                │ Messages ↔ tasks & replies │
+                │ Native A2A ↔ shared model  │
+                └─────────────┬──────────────┘
+                              │
+             ┌────────────────┼────────────────┐
+             ▼                ▼                ▼
+       ┌──────────┐     ┌──────────┐     ┌────────────┐
+       │ iMessage │     │ WhatsApp │     │ Native A2A │
+       │ surface  │     │ surface  │     │ surface    │
+       └────┬─────┘     └────┬─────┘     └─────┬──────┘
+            ↕                ↕                 ↕
+      iMessage agents  WhatsApp agents   A2A 0.3 / 1.0
+                                         agent endpoints
 ```
 
 Connecting as a client does not automatically register an agent to receive work. An agent can participate in both roles if it can call the MCP server and is registered through one of the supported surfaces below. ChatGPT currently participates only as a client.
+
+The **surface bridge** is the adaptation layer implemented together by the kernel's router and the surface libraries. It turns iMessage and WhatsApp conversations into an A2A-style interface for sending messages, tracking tasks, collecting replies, and canceling local waits. The native A2A surface translates protocol versions and normalizes remote tasks and replies into that same model. Messaging agents do not need to implement A2A themselves.
 
 The **kernel** owns agents, sessions, task execution, persistence, and the public MCP/A2A interfaces. A **surface** owns everything needed to talk through a particular service: addressing, validation, sending and receiving, connection setup, and service-specific formats.
 

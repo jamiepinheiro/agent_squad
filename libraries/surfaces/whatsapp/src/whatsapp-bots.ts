@@ -1,7 +1,7 @@
 import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from 'node:crypto';
 import { readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
-import { proto, generateMessageIDV2, encodeSignedDeviceIdentity, getBinaryNodeChild, jidNormalizedUser, jidEncode, unpadRandomMax16, type BinaryNode, type WASocket } from '@whiskeysockets/baileys';
+import { proto, generateMessageIDV2, encodeSignedDeviceIdentity, getBinaryNodeChild, jidNormalizedUser, jidDecode, jidEncode, unpadRandomMax16, type BinaryNode, type WASocket } from '@whiskeysockets/baileys';
 
 type Secret = { bot:string; sender:string; secret:string; root?:boolean; session?:boolean };
 // WhatsApp's default Muse/Hatch bot uses a pairing-secret envelope.
@@ -93,7 +93,12 @@ export class WhatsAppBots {
       }},
     };
     const ownDevices=await socket.getUSyncDevices([me.id],true,false);
-    const ownJids=[...new Set(ownDevices.map(d=>jidEncode(d.user,'s.whatsapp.net',d.device)))].filter(jid=>jid!==me.id);
+    // A migrated account keys its own-device sessions by its LID. Addressing the self copy by
+    // phone number instead builds a parallel session the other devices cannot decrypt, which
+    // WhatsApp renders as "Waiting for this message".
+    const lidUser=me.lid?jidDecode(me.lid)?.user:undefined;
+    const myDevice=jidDecode(me.id)?.device ?? 0;
+    const ownJids=[...new Set(ownDevices.filter(d=>(d.device ?? 0)!==myDevice).map(d=>jidEncode(lidUser ?? d.user,lidUser?'lid':'s.whatsapp.net',d.device)))];
     await socket.assertSessions([bot,...ownJids],false);
     let botMessage=message;
     if(bot===museBotAddress) {
