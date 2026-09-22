@@ -8,7 +8,7 @@ import SwiftUI
             return "Open this business conversation in Messages to load its logo, then try again."
         }
         try await gateway.action("setContactPhoto", ["agentId": savedAgent.id, "photo": photo])
-        
+
         return "Image refreshed from Messages."
     }
     let directory = ContactDirectory()
@@ -26,7 +26,7 @@ import SwiftUI
     }?.profilePhoto
     guard let photo else { return "No photo found in Contacts." }
     try await gateway.action("setContactPhoto", ["agentId": savedAgent.id, "photo": photo])
-    
+
     return "Image refreshed from Contacts."
 
 }

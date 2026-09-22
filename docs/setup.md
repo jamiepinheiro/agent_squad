@@ -41,4 +41,3 @@ New iMessage agents use their Mac Contacts photo when available. Adding a WhatsA
 Use **Edit Agent → Image → Refresh Image** to fetch a replacement. iMessage refreshes from Contacts; other agents receive a new image request. An unsuccessful refresh keeps the previous image.
 
 The iMessage picker also includes existing **Messages for Business** conversations, including accounts with `urn:biz:` addresses. These are discovered from Messages rather than Contacts, sent to their existing chat, and use the locally cached business logo when available. **Refresh Image** reloads that logo; open the conversation in Messages first if its branding has not been cached.
-

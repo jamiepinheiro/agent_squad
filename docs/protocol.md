@@ -44,4 +44,3 @@ Cancellation stops local waiting for messaging agents; it cannot recall a messag
 Prompts are **text only**. Profile-image replies are supported as a limited exception. Attachments, streamed A2A responses, push notifications, and ACP subprocess agents are not implemented or advertised. Native agents that require interactive auth or approval return `input-required`; there is no generic permissions UI yet. Agent availability means the profile is enabled; it is not a continuous endpoint health guarantee.
 
 Live end-to-end delivery requires your real accounts, macOS permissions, and chosen agent. Automated tests use isolated transports and local fake A2A endpoints and never send iMessage or WhatsApp messages.
-
