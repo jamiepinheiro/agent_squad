@@ -1,0 +1,25 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "rootDir": "src",
+    "outDir": "dist",
+    "tsBuildInfoFile": "dist/.tsbuildinfo"
+  },
+  "include": [
+    "src/**/*.ts"
+  ],
+  "references": [
+    {
+      "path": "../libraries/kernel"
+    },
+    {
+      "path": "../libraries/surfaces/imessage"
+    },
+    {
+      "path": "../libraries/surfaces/whatsapp"
+    },
+    {
+      "path": "../libraries/surfaces/a2a"
+    }
+  ]
+}

@@ -1,0 +1,20 @@
+{
+  "files": [],
+  "references": [
+    {
+      "path": "libraries/kernel"
+    },
+    {
+      "path": "libraries/surfaces/imessage"
+    },
+    {
+      "path": "libraries/surfaces/whatsapp"
+    },
+    {
+      "path": "libraries/surfaces/a2a"
+    },
+    {
+      "path": "gateway"
+    }
+  ]
+}

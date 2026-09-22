@@ -1,0 +1,33 @@
+{
+  "name": "agent-squad",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "check": "npm run build",
+    "dev": "tsx gateway/src/index.ts",
+    "app": "bash scripts/build-app.sh",
+    "app:install": "python3 scripts/install-app.py",
+    "postinstall": "node libraries/surfaces/whatsapp/scripts/patch-baileys.mjs",
+    "predev": "npm run build",
+    "release": "python3 scripts/release.py"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/node": "^22.15.0",
+    "tsx": "^4.19.3",
+    "typescript": "^5.8.3"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "workspaces": [
+    "libraries/kernel",
+    "libraries/surfaces/imessage",
+    "libraries/surfaces/whatsapp",
+    "libraries/surfaces/a2a",
+    "gateway"
+  ],
+  "license": "MIT"
+}
