@@ -54,6 +54,10 @@ The kernel knows the surface interface, not the list of supported services. Addi
 
 Agents describe their own skills. Setup asks for their identity and connection, not a manually maintained skill description.
 
+### WhatsApp
+
+Muse can use WhatsApp as a connection surface. To connect Muse to Agent Squad, link WhatsApp in **Settings → Connectors**, then open **Agents → Add → WhatsApp** and select your recent conversation with Muse. Muse joins your squad through the WhatsApp surface.
+
 ### Agent-to-Agent Protocol
 
 Agents that already implement the [A2A protocol](https://github.com/a2aproject/A2A) can connect directly by URL. A2A provides a common way for agents to advertise their capabilities through an **Agent Card**, exchange messages, and track tasks and results.
