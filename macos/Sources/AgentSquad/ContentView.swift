@@ -13,6 +13,7 @@ struct ContentView: View {
     @Environment(Gateway.self) private var gateway
     @State private var destination: Destination? = .agents
     @State private var sheet: SquadSheet?
+    @AppStorage("agentCardOrder") private var savedAgentOrder = "[]"
     var body: some View {
         @Bindable var gateway = gateway
         NavigationSplitView {
@@ -68,8 +69,10 @@ struct ContentView: View {
                         }.frame(maxWidth: .infinity).padding(.vertical, 48).card()
                     } else {
                         LazyVGrid(columns: [GridItem(.adaptive(minimum: 250), spacing: 16)], spacing: 16) {
-                            ForEach(state.agents) { agent in
-                                AgentRow(agent: agent, disconnected: disconnected(agent, state: state), working: state.sessions.contains { $0.agentId == agent.id && $0.status == "working" }, open: { sheet = .detail(agent.id) }, edit: { sheet = .editor(agent) })
+                            ForEach(orderedAgents(state.agents)) { agent in
+                                ReorderableAgentCard(agentID: agent.id, move: moveAgent) {
+                                    AgentRow(agent: agent, disconnected: disconnected(agent, state: state), working: state.sessions.contains { $0.agentId == agent.id && $0.status == "working" }, open: { sheet = .detail(agent.id) }, edit: { sheet = .editor(agent) })
+                                }
                             }
                         }
                     }
@@ -79,6 +82,27 @@ struct ContentView: View {
         }.navigationTitle("")
         .task { for surface in NativeSurfaces.all { await surface.refreshStatus() } }
     }
+    private func orderedAgents(_ agents: [SquadAgent]) -> [SquadAgent] {
+        let ids = (try? JSONDecoder().decode([String].self, from: Data(savedAgentOrder.utf8))) ?? []
+        var remaining = Dictionary(agents.map { ($0.id, $0) }, uniquingKeysWith: { first, _ in first })
+        let saved = ids.compactMap { remaining.removeValue(forKey: $0) }
+        return saved + agents.filter { remaining[$0.id] != nil }
+    }
+
+    private func moveAgent(_ sourceID: String, _ targetID: String) -> Bool {
+        guard let agents = gateway.state?.agents else { return false }
+        var ids = orderedAgents(agents).map(\.id)
+        guard sourceID != targetID,
+              let source = ids.firstIndex(of: sourceID),
+              let target = ids.firstIndex(of: targetID) else { return false }
+        ids.remove(at: source)
+        ids.insert(sourceID, at: target)
+        guard let data = try? JSONEncoder().encode(ids),
+              let order = String(data: data, encoding: .utf8) else { return false }
+        withAnimation(.easeInOut(duration: 0.2)) { savedAgentOrder = order }
+        return true
+    }
+
     private func disconnected(_ agent: SquadAgent, state: GatewayState) -> Bool {
         if !agent.enabled { return true }
         return NativeSurfaces.find(agent.adapterType)?.isDisconnected(agent, state) ?? true
