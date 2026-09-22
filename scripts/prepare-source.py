@@ -29,6 +29,7 @@ if (resources / 'package-lock.json').read_bytes() != (root / 'package-lock.json'
 version = json.loads((root / 'package.json').read_text())['version']
 cache = root / '.build/source-downloads'
 cache.mkdir(parents=True, exist_ok=True)
+source_overrides = json.loads((root / 'scripts/dependency-sources.json').read_text())
 
 
 def download(url, integrity=None):
@@ -71,14 +72,17 @@ def package_sources(entry):
     manifest = json.loads((resources / location / 'package.json').read_text())
     name, package_version = manifest['name'], manifest['version']
     resolved = item['resolved']
+    override = source_overrides.get(name + '@' + package_version, {})
     row = {'name': name, 'version': package_version, 'installed_path': location, 'license': manifest.get('license'), 'archives': []}
     if resolved.startswith('https://registry.npmjs.org/'):
         metadata_url = f'https://registry.npmjs.org/{urllib.parse.quote(name, safe="")}/{urllib.parse.quote(package_version, safe="")}'
         metadata = json.loads(download(metadata_url).read_text())
         archives = [('npm', resolved, item.get('integrity'))]
-        source = github_source(metadata.get('repository', manifest.get('repository')), metadata.get('gitHead'))
+        source = github_source(override.get('repository', metadata.get('repository', manifest.get('repository'))), override.get('revision', metadata.get('gitHead')))
+        if override.get('published_source'): source = None
         if source: archives.append(('upstream', source, None))
-        row['upstream_revision'] = metadata.get('gitHead')
+        row['upstream_revision'] = override.get('revision', metadata.get('gitHead'))
+        if override: row['source_review'] = override
         row['repository'] = metadata.get('repository', manifest.get('repository'))
     else:
         commit = resolved.rsplit('#', 1)[-1]
@@ -100,8 +104,17 @@ def package_sources(entry):
         # Read archive headers without extracting or executing upstream files.
         with tarfile.open(fileobj=io.BytesIO(data), mode='r:gz') as archive:
             if not archive.getmembers(): raise ValueError(f'Empty source archive: {name}')
+            if kind == 'upstream' and override.get('package_file'):
+                suffix = '/' + override['package_file']
+                candidates = [m for m in archive if m.isfile() and m.name.split('/', 1)[-1] == override['package_file']]
+                if len(candidates) != 1: raise ValueError(f'Cannot verify upstream package metadata: {name}')
+                upstream = json.load(archive.extractfile(candidates[0]))
+                if (upstream.get('name'), upstream.get('version')) != (name, package_version):
+                    raise ValueError(f'Upstream source version mismatch: {name}')
         digest = hashlib.sha256(data).hexdigest()
         row['archives'].append({'kind': kind, 'url': url, 'sha256': digest, 'file': f'dependencies/{digest}.tar.gz'})
+    if not any(a['kind'] == 'upstream' for a in row['archives']) and not override.get('published_source'):
+        raise ValueError(f'Review original source coverage for {name}@{package_version} and add a pinned source mapping.')
     return row
 
 

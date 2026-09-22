@@ -35,10 +35,10 @@ def release_manifest():
     if not build_file.exists():
         raise SystemExit('Build the release and corresponding source first.')
     build = json.loads(build_file.read_text())
-    if build['version'] != version or build['app_sha256'] != sha256(zip_path):
+    if build['version'] != version or build['arch'] != arch or build['app_sha256'] != sha256(zip_path):
         raise SystemExit('App archive no longer matches the release manifest. Rebuild the release.')
     source = root / 'dist' / build['source']['file']
-    if not source.exists() or sha256(source) != build['source']['sha256']:
+    if build['source']['revision'] != build['revision'] or not source.exists() or sha256(source) != build['source']['sha256']:
         raise SystemExit('The matching source archive is missing or has changed.')
     return build
 
@@ -85,10 +85,12 @@ if args.step == 'build':
     build_file.write_text(json.dumps({'version': version, 'revision': revision, 'arch': arch,
         'app_sha256': sha256(zip_path), 'source': source}, indent=2) + '\n')
 elif args.step.startswith('submit-'):
-    release_manifest()
+    build = release_manifest()
     kind = args.step.removeprefix('submit-')
     artifact = zip_path if kind == 'app' else dmg
     digest = hashlib.sha256(artifact.read_bytes()).hexdigest()
+    if kind == 'dmg' and state.get('package') != {'app_sha256': build['app_sha256'], 'dmg_sha256': digest}:
+        raise SystemExit('Package this app into a DMG before submitting it.')
     if state.get(kind, {}).get('sha256') == digest:
         print(f"Existing {kind} submission: {state[kind]['id']}")
     else:
@@ -98,7 +100,7 @@ elif args.step.startswith('submit-'):
         save()
         print(f"Submitted {kind}: {result['id']}. Check using notarytool info before the next step.")
 elif args.step == 'package':
-    release_manifest()
+    build = release_manifest()
     accepted('app')
     stage = work / 'image'
     if stage.exists(): shutil.rmtree(stage)
@@ -117,8 +119,12 @@ elif args.step == 'package':
     identity = os.environ.get('AGENT_SQUAD_SIGNING_IDENTITY')
     if not identity: raise SystemExit('Set AGENT_SQUAD_SIGNING_IDENTITY to the Developer ID used for the app.')
     run('codesign', '--force', '--timestamp', '--sign', identity, str(dmg))
+    state['package'] = {'app_sha256': build['app_sha256'], 'dmg_sha256': sha256(dmg)}
+    save()
 elif args.step == 'finish':
     build = release_manifest()
+    if state.get('package', {}).get('app_sha256') != build['app_sha256']:
+        raise SystemExit('The DMG belongs to another app build. Package this release first.')
     accepted('dmg')
     run('xcrun', 'stapler', 'staple', str(dmg))
     run('xcrun', 'stapler', 'validate', str(dmg))
