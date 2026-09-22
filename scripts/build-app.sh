@@ -59,7 +59,7 @@ if [ -n "${AGENT_SQUAD_SOURCE_REVISION:-}" ]; then
 import json, os, pathlib, sys
 pathlib.Path(sys.argv[1]).write_text(json.dumps({
     'revision': os.environ['AGENT_SQUAD_SOURCE_REVISION'],
-    'repository': 'https://github.com/jamiepinheiro/agent-squad',
+    'repository': 'https://github.com/jamiepinheiro/agent_squad',
 }, indent=2) + '\n')
 PYINFO
 fi
