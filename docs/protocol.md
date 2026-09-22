@@ -20,6 +20,12 @@ Agent setup stores a name and connection, with no user-authored skill descriptio
 
 Every operation after discovery takes `agent_id`. Session tools also take `session_id`; task tools use `task_id`. Agent-to-agent protocol task operations preserve the remote response unchanged. Session convenience tools persist a local history and poll native tasks in the background.
 
+## Callers and registered agents
+
+An agent that supports MCP can connect as a client, discover registered agents, and dispatch work to them. Receiving work requires a separate registration through a supported surface; connecting as a client does not automatically create one. Agents with both capabilities can act as callers and recipients.
+
+The ChatGPT tunnel supports the caller role only. ChatGPT can discover registered agents, send tasks, and receive replies, but Agent Squad does not expose ChatGPT as a callable agent. Other agents cannot dispatch work to ChatGPT through this integration.
+
 ## Connection and security model
 
 Agent Squad's MCP and A2A endpoints use **no application authentication**: no Agent Squad access tokens, bearer headers, OAuth provider, client registration, or sign-in. Configure MCP clients with **No authentication** and Streamable HTTP. Copy the endpoint from **Settings → MCP**; the default is `http://127.0.0.1:9847/mcp`.

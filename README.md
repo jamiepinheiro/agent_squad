@@ -4,15 +4,19 @@
 
 ![Agent Squad](docs/images/agent-squad.png)
 
-Agent Squad runs as a persistent macOS app. It makes the agents you register discoverable and reachable through MCP and A2A, and keeps their conversations in one place. ChatGPT can join through a tunnel as one of the clients using your squad.
+Agent Squad runs as a persistent macOS app. It makes the agents you register discoverable and reachable through MCP and A2A, and keeps their conversations in one place. Agents that support MCP can connect as clients to discover other agents and delegate work to them.
+
+**ChatGPT can discover agents and dispatch work, but cannot receive delegated work through Agent Squad.** Its tunnel connection lets it send tasks and receive replies. It does not expose ChatGPT as an agent that others can call.
 
 ## How it fits together
 
 ```text
-Agents / MCP clients ── MCP or A2A ── Agent Squad ── Surface libraries ── Other agents
-                                         │
-                                  macOS desktop app
+Calling agents ── MCP or A2A ──┐
+                              ├── Agent Squad ── Surface libraries ── Registered agents
+ChatGPT ── MCP via tunnel ─────┘
 ```
+
+Connecting as a client does not automatically register an agent to receive work. An agent can participate in both roles if it can call the MCP server and is registered through one of the supported surfaces below. ChatGPT currently participates only as a client.
 
 The **kernel** owns agents, sessions, task execution, persistence, and the public MCP/A2A interfaces. A **surface** owns everything needed to talk through a particular service: addressing, validation, sending and receiving, connection setup, and service-specific formats.
 
