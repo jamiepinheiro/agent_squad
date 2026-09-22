@@ -10,6 +10,8 @@ from pathlib import Path
 import re
 import subprocess
 import tarfile
+import tempfile
+import urllib.error
 import urllib.parse
 import urllib.request
 
@@ -38,8 +40,9 @@ def download(url, integrity=None):
                 data = response.read()
         except Exception as error:
             raise RuntimeError(f'Could not download {url}: {error}') from error
-        temporary = path.with_suffix('.tmp')
-        temporary.write_bytes(data)
+        with tempfile.NamedTemporaryFile(dir=cache, delete=False) as output:
+            output.write(data)
+            temporary = Path(output.name)
         temporary.replace(path)
     data = path.read_bytes()
     if integrity:
@@ -84,7 +87,15 @@ def package_sources(entry):
         archives = [('upstream', source, None)]
         row['upstream_revision'] = commit
     for kind, url, integrity in archives:
-        path = download(url, integrity)
+        try:
+            path = download(url, integrity)
+        except RuntimeError as error:
+            if kind == 'upstream' and row['archives'] and isinstance(error.__cause__, urllib.error.HTTPError) and error.__cause__.code == 404:
+                # Some historic registry revisions have disappeared upstream. Keep
+                # the verified npm source and flag it for source-coverage review.
+                row['unavailable_upstream'] = url
+                continue
+            raise
         data = path.read_bytes()
         # Read archive headers without extracting or executing upstream files.
         with tarfile.open(fileobj=io.BytesIO(data), mode='r:gz') as archive:
