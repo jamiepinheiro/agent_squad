@@ -47,7 +47,7 @@
   "qified@0.10.1": {
     "repository": "https://github.com/jaredwray/qified",
     "revision": "3dcb0d22464572939cb54264ee046ae1facc855b",
-    "package_file": "package.json"
+    "package_file": "packages/qified/package.json"
   },
   "@protobufjs/aspromise@1.1.2": {
     "published_source": "The npm archive contains the original readable JavaScript implementation and license."

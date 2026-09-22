@@ -105,7 +105,6 @@ def package_sources(entry):
         with tarfile.open(fileobj=io.BytesIO(data), mode='r:gz') as archive:
             if not archive.getmembers(): raise ValueError(f'Empty source archive: {name}')
             if kind == 'upstream' and override.get('package_file'):
-                suffix = '/' + override['package_file']
                 candidates = [m for m in archive if m.isfile() and m.name.split('/', 1)[-1] == override['package_file']]
                 if len(candidates) != 1: raise ValueError(f'Cannot verify upstream package metadata: {name}')
                 upstream = json.load(archive.extractfile(candidates[0]))
