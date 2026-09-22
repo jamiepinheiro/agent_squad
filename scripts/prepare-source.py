@@ -33,8 +33,11 @@ def download(url, integrity=None):
     path = cache / hashlib.sha256(url.encode()).hexdigest()
     if not path.exists():
         request = urllib.request.Request(url, headers={'User-Agent': 'Agent-Squad-release'})
-        with urllib.request.urlopen(request, timeout=60) as response:
-            data = response.read()
+        try:
+            with urllib.request.urlopen(request, timeout=60) as response:
+                data = response.read()
+        except Exception as error:
+            raise RuntimeError(f'Could not download {url}: {error}') from error
         temporary = path.with_suffix('.tmp')
         temporary.write_bytes(data)
         temporary.replace(path)
