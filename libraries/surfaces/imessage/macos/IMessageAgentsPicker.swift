@@ -70,7 +70,7 @@ struct IMessageAgentsPicker: View {
                         VStack(alignment: .leading, spacing: 0) {
                             ForEach(businessContacts.filter { query.isEmpty || $0.name.localizedStandardContains(query) }) { contact in contactRow(contact) }
                         }
-                    }.frame(maxHeight: 130)
+                    }.frame(maxHeight: 110)
                 }
                 Divider()
             }
@@ -118,10 +118,9 @@ struct IMessageAgentsPicker: View {
         case .loading:
             ProgressView("Loading Contacts…").frame(maxWidth: .infinity, maxHeight: .infinity)
         case .denied:
-            permissionPanel(title: "Allow access to Contacts", detail: "Enable Agent Squad in System Settings → Privacy & Security → Contacts, then return here.", button: "Open Contacts Settings") {
+            permissionPanel(title: "Allow access to Contacts", detail: "Enable Agent Squad in System Settings → Privacy & Security → Contacts, then return here.", button: "Open Contacts Settings", secondary: ("Check Again", { Task { await directory.load(); await loadBusinessChats() } })) {
                 openURL("x-apple.systempreferences:com.apple.preference.security?Privacy_Contacts")
             }
-            Button("Check Again") { Task { await directory.load(); await loadBusinessChats() } }
         case .failed:
             permissionPanel(title: "Couldn’t load Contacts", detail: directory.error ?? "Please try again.", button: "Try Again") { Task { await directory.load(); await loadBusinessChats() } }
         case .ready:
@@ -153,13 +152,16 @@ struct IMessageAgentsPicker: View {
         }
     }
 
-    private func permissionPanel(title: String, detail: String, button: String, action: @escaping () -> Void) -> some View {
-        VStack(spacing: 16) {
-            Image(systemName: "person.crop.rectangle.stack").font(.system(size: 38)).foregroundStyle(Color.squadGreen)
+    private func permissionPanel(title: String, detail: String, button: String, secondary: (String, () -> Void)? = nil, action: @escaping () -> Void) -> some View {
+        VStack(spacing: 12) {
+            Image(systemName: "person.crop.rectangle.stack").font(.system(size: 30)).foregroundStyle(Color.squadGreen)
             Text(title).font(.headline)
-            Text(detail).foregroundStyle(.secondary).multilineTextAlignment(.center)
-            Button(button, action: action).buttonStyle(.borderedProminent)
-        }.padding(30).frame(maxWidth: .infinity, maxHeight: .infinity)
+            Text(detail).foregroundStyle(.secondary).multilineTextAlignment(.center).fixedSize(horizontal: false, vertical: true)
+            HStack {
+                Button(button, action: action).buttonStyle(.borderedProminent)
+                if let secondary { Button(secondary.0, action: secondary.1) }
+            }
+        }.padding(.vertical, 12).frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
     private func contactRow(_ contact: ContactCandidate) -> some View {

@@ -20,9 +20,19 @@ struct AgentEditor: View {
     @State private var saving = false
     @State private var validating = false
     private var isNew: Bool { !(gateway.state?.agents.contains { $0.id == agent.id } ?? false) }
+    private func secondsField(_ title: String, value: Binding<Int>, in range: ClosedRange<Int>) -> some View {
+        LabeledContent(title) {
+            HStack(spacing: 6) {
+                TextField(title, value: Binding(get: { value.wrappedValue }, set: { value.wrappedValue = min(max($0, range.lowerBound), range.upperBound) }), format: .number.grouping(.never))
+                    .labelsHidden().textFieldStyle(.roundedBorder).multilineTextAlignment(.trailing).frame(width: 70)
+                Text("seconds").foregroundStyle(.secondary)
+            }
+        }.help("\(range.lowerBound)–\(range.upperBound) seconds")
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 22) {
-            if !embedded { Text(isNew ? "Add Agent" : "Edit \(agent.name)").font(.title2.weight(.semibold)) }
+            if !embedded { Text(isNew ? "Add Agent" : "Edit").font(.title2.weight(.semibold)) }
             Form {
                 Section("Agent") {
                     if !embedded {
@@ -50,11 +60,11 @@ struct AgentEditor: View {
                 }
 
                 Section("Task behavior") {
-                    Toggle("Available to your assistant", isOn: $agent.enabled)
+                    Toggle("Enabled", isOn: $agent.enabled)
                     if NativeSurfaces.find(agent.adapterType)?.usesQuietInterval == true {
-                        Stepper("Finish after \(agent.quietSeconds) seconds without another reply", value: $agent.quietSeconds, in: 1...120)
+                        secondsField("Finish after no reply for", value: $agent.quietSeconds, in: 1...120)
                     }
-                    Stepper("Wait up to \(agent.timeoutSeconds) seconds for a task", value: $agent.timeoutSeconds, in: 10...3600, step: 10)
+                    secondsField("Task timeout", value: $agent.timeoutSeconds, in: 10...3600)
                 }
             }.formStyle(.grouped).disabled(saving || validating || refreshingPhoto)
             if let error { Text(error).foregroundStyle(.red).font(.caption) }
