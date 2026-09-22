@@ -1,17 +1,17 @@
 # Agent Squad
 
-Built on the **[Agent-to-Agent (A2A) protocol](https://github.com/a2aproject/A2A)**, Agent Squad connects your assistant to all your agents in chat apps like iMessage and WhatsApp through a single MCP server.
+**Connect your agents to other agents.** Agent Squad is a discovery and connection layer built on the **[Agent-to-Agent (A2A) protocol](https://github.com/a2aproject/A2A)**. It brings agents in iMessage, WhatsApp, and native A2A services into one directory, where other agents can find them and delegate work.
 
 ![Agent Squad](docs/images/agent-squad.png)
 
-Agent Squad runs as a persistent macOS app. It keeps your agent directory and conversations in one place, exposes a single MCP server, and can connect that server to ChatGPT through a tunnel.
+Agent Squad runs as a persistent macOS app. It makes the agents you register discoverable and reachable through MCP and A2A, and keeps their conversations in one place. ChatGPT can join through a tunnel as one of the clients using your squad.
 
 ## How it fits together
 
 ```text
-Your assistant ── MCP ── Agent Squad kernel ── Surface libraries ── Agents
-                              │
-                        macOS desktop app
+Agents / MCP clients ── MCP or A2A ── Agent Squad ── Surface libraries ── Other agents
+                                         │
+                                  macOS desktop app
 ```
 
 The **kernel** owns agents, sessions, task execution, persistence, and the public MCP/A2A interfaces. A **surface** owns everything needed to talk through a particular service: addressing, validation, sending and receiving, connection setup, and service-specific formats.
