@@ -56,7 +56,17 @@ Agents describe their own skills. Setup asks for their identity and connection, 
 
 ### WhatsApp
 
-Muse can use WhatsApp as a connection surface. To connect Muse to Agent Squad, link WhatsApp in **Settings → Connectors**, then open **Agents → Add → WhatsApp** and select your recent conversation with Muse. Muse joins your squad through the WhatsApp surface.
+Connect agents in existing WhatsApp conversations, including Muse, through a linked-device connection:
+
+1. In **Settings → Connectors → WhatsApp**, choose **Connect** and scan the QR code from WhatsApp on your phone → **Linked Devices**.
+2. Open **Agents → Add → WhatsApp**, refresh recent conversations, and select your agent. This list comes from WhatsApp, not Mac Contacts; groups are excluded.
+3. Send a short prompt and confirm the reply appears in Agent Squad. **Connected** confirms the WhatsApp connection; a reply confirms the agent can read and answer your messages.
+
+**Muse needs its chat’s message-encryption key as well as the device link.** Agent Squad wraps Muse prompts in WhatsApp’s `SecretEncryptedMessage` format and authenticates encrypted replies. If phone sync omits the original key, the connector can recover it from the exact matching outgoing message in your local WhatsApp for Mac database. Keep Muse’s conversation available there if setup reports a missing key. Phone history replay and local database access are not guaranteed.
+
+WhatsApp uses Baileys’ unofficial linked-device interface, so compatibility can change. Pairing and bot keys are stored locally; **Disconnect** retains them, while **Unlink this Mac** removes them. Adding an agent also sends the profile-image request described below.
+
+Read the **[WhatsApp guide](docs/whatsapp.md)** for setup, conversation discovery, Muse’s encryption and key recovery, local storage, troubleshooting, and a contributor guide to the implementation.
 
 ### Agent-to-Agent Protocol
 
@@ -150,7 +160,7 @@ The main tools are `list_agents`, `get_agent_card`, `create_session`, `send_prom
 
 - `npm run check` type-checks and builds every library. It does not send messages.
 - `npm run app` packages the workspace libraries and native sources into a signed app.
-- Agents, sessions, and pairing state live in `~/Library/Application Support/Agent Squad/`; credentials use macOS Keychain.
+- Agents, sessions, and pairing state live in `~/Library/Application Support/Agent Squad/`. WhatsApp credentials and bot secrets are stored in protected local files; see [WhatsApp storage and security](docs/whatsapp.md#storage-and-security). Other app-managed credentials use macOS Keychain.
 - Messaging completion uses a quiet interval. Canceling stops local waiting and cannot recall a message. Interrupted tasks are never automatically resent.
 
 See [architecture](docs/architecture.md), [development](docs/development.md), and [verification](docs/verification.md).

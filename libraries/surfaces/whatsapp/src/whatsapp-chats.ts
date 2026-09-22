@@ -35,9 +35,10 @@ export class WhatsAppChats {
   updateContacts(contacts:any[]) {
     for(const c of contacts) {
       if(!c.id || !direct(c.id)) continue;
-      const ids=[c.id,c.lid,c.lidJid,c.jid,c.pnJid].filter(id=>typeof id==='string' && direct(id));
+      // phoneNumber is how the library links a LID contact to its phone number.
+      const ids=[c.id,c.lid,c.lidJid,c.jid,c.pnJid,c.phoneNumber].filter(id=>typeof id==='string' && direct(id));
       const old=ids.map(id=>this.contacts.get(id)).find(info=>info?.name) ?? this.contacts.get(c.id);
-      const info={name:displayName(c.name,c.displayName,c.notify,c.verifiedName,old?.name),recipient:phone(c.pnJid || c.jid || c.id) || old?.recipient || ''};
+      const info={name:displayName(c.name,c.displayName,c.notify,c.verifiedName,old?.name),recipient:phone(c.pnJid || c.phoneNumber || c.jid || c.id) || old?.recipient || ''};
       for(const id of ids) {
         this.contacts.set(id,info);
         const chat=this.chats.get(id);

@@ -1,11 +1,26 @@
+import { readLocalBotSecret } from './whatsapp-pairing.js';
 import { WhatsAppChats } from './whatsapp-chats.js';
 import { WhatsAppBots, botText } from './whatsapp-bots.js';
-import makeWASocket, { extractMessageContent, useMultiFileAuthState, fetchLatestWaWebVersion, DisconnectReason, ALL_WA_PATCH_NAMES, type WASocket, type BinaryNode, type proto } from '@whiskeysockets/baileys';
+import makeWASocket, { extractMessageContent, useMultiFileAuthState, fetchLatestWaWebVersion, DisconnectReason, ALL_WA_PATCH_NAMES, jidNormalizedUser, proto, type WASocket, type BinaryNode, type SignalDataTypeMap } from '@whiskeysockets/baileys';
 import pino from 'pino';
 import { mkdirSync, chmodSync, rmSync } from 'node:fs';
 import type { Agent, Incoming, MessagingTransport } from '@agent-squad/kernel';
 
-const defaultRuntime={loadAuth:useMultiFileAuthState,fetchVersion:fetchLatestWaWebVersion,makeSocket:makeWASocket};
+const defaultRuntime={loadAuth:useMultiFileAuthState,fetchVersion:fetchLatestWaWebVersion,makeSocket:makeWASocket,readBotSecret:readLocalBotSecret};
+// Opt-in diagnostics: AGENT_SQUAD_WHATSAPP_LOG=<file> records library events, which can include
+// contact and message details. Keep the file outside the WhatsApp directory so signing out does
+// not delete it.
+let libraryLogger:pino.Logger|undefined;
+const logger=()=>libraryLogger ??= process.env.AGENT_SQUAD_WHATSAPP_LOG
+  // The library logs failures under `error`, which pino only expands when told to.
+  ? pino({level:'debug',serializers:{error:pino.stdSerializers.err,err:pino.stdSerializers.err}},pino.destination({dest:process.env.AGENT_SQUAD_WHATSAPP_LOG,mkdir:true,sync:true,mode:0o600}))
+  : pino({level:'silent'});
+// Rebuild the local app-state snapshot so names received before this picker existed are emitted
+// again. Encryption keys are retained.
+async function resyncAppState(socket:WASocket) {
+  await socket.authState.keys.set({'app-state-sync-version':Object.fromEntries(ALL_WA_PATCH_NAMES.map(name=>[name,null]))});
+  await socket.resyncAppState([...ALL_WA_PATCH_NAMES],false);
+}
 
 export class WhatsAppTransport implements MessagingTransport {
   status='disconnected'; qr:string|null=null; error:string|null=null;
@@ -17,7 +32,7 @@ export class WhatsAppTransport implements MessagingTransport {
   private chatSync?:Promise<void>;
   private lastHistoryReplay=0;
   chatSyncStatus="idle"; chatSyncError:string|null=null;
-  constructor(private directory:string,private runtime=defaultRuntime) { this.chats=new WhatsAppChats(directory);this.bots=new WhatsAppBots(directory); }
+  constructor(private directory:string,private runtime=defaultRuntime) { this.chats=new WhatsAppChats(directory);this.bots=new WhatsAppBots(directory,(info,message)=>logger().info(info,message),runtime.readBotSecret); }
   recentChats() { return this.chats.list(); }
   async refreshChats():Promise<void> {
     this.requireConnected();
@@ -26,10 +41,7 @@ export class WhatsAppTransport implements MessagingTransport {
     this.chatSyncStatus='syncing';this.chatSyncError=null;
     this.chatSync=(async()=>{
       try {
-        // Rebuild the local app-state snapshot so names received before this
-        // picker existed are emitted again. Encryption keys are retained.
-        await socket.authState.keys.set({'app-state-sync-version':Object.fromEntries(ALL_WA_PATCH_NAMES.map(name=>[name,null]))});
-        await socket.resyncAppState([...ALL_WA_PATCH_NAMES],false);
+        await resyncAppState(socket);
         // Ask our own primary device to replay already-received history
         // notifications so upgraded parsers can recover fields older builds lost.
         if(!this.lastHistoryReplay) {
@@ -58,7 +70,7 @@ export class WhatsAppTransport implements MessagingTransport {
     try {
       mkdirSync(this.directory,{recursive:true,mode:0o700});chmodSync(this.directory,0o700);
       // The library's bundled version becomes obsolete and can fail before QR generation.
-      version=await this.runtime.fetchVersion({timeout:10000});
+      version=await this.runtime.fetchVersion({signal:AbortSignal.timeout(10000)});
       if(!version.isLatest) throw Error('Could not retrieve the current WhatsApp Web version. Check your internet connection and try again.');
       auth=await this.runtime.loadAuth(this.directory);
     } catch(error) {
@@ -67,9 +79,47 @@ export class WhatsAppTransport implements MessagingTransport {
     }
     if(generation!==this.generation) return;
     const {state,saveCreds}=auth;
+    // App-state keys decrypt contact names. Keys the library looks up but lacks are requested from
+    // our primary phone, which answers with a key share (whatsmeow does the same).
+    const keys=state.keys, wantedKeys=new Set<string>(), requestedKeys=new Set<string>();
+    let keyRequest:NodeJS.Timeout|undefined, resyncWhenOpen=false;
+    if(keys) state.keys={...keys,get:async<T extends keyof SignalDataTypeMap>(type:T,ids:string[])=>{
+      const found=await keys.get(type,ids);
+      if(type==='app-state-sync-key' && generation===this.generation) {
+        for(const id of ids) if(!found[id] && !requestedKeys.has(id)) wantedKeys.add(id);
+        if(wantedKeys.size && !keyRequest) keyRequest=setTimeout(()=>{keyRequest=undefined;void requestAppStateKeys();},500);
+      }
+      return found;
+    }};
+    const requestAppStateKeys=async()=>{
+      const me=state.creds?.me;
+      if(generation!==this.generation || this.status!=='connected' || !me?.id || !wantedKeys.size) return;
+      const ids=[...wantedKeys];wantedKeys.clear();
+      for(const id of ids) requestedKeys.add(id);
+      try {
+        // Peer messages are addressed by phone number; the library encrypts them with the LID
+        // session a migrated phone expects. Addressing the LID directly is rejected (error 479).
+        await socket.relayMessage(jidNormalizedUser(me.id),{protocolMessage:{type:proto.Message.ProtocolMessage.Type.APP_STATE_SYNC_KEY_REQUEST,appStateSyncKeyRequest:{keyIds:ids.map(id=>({keyId:Buffer.from(id,'base64')}))}}},
+          {additionalAttributes:{category:'peer',push_priority:'high_force'}});
+        logger().info({keys:ids.length},'requested missing app state keys from primary device');
+      } catch(error) {
+        for(const id of ids) requestedKeys.delete(id);
+        logger().warn({error},'could not request app state keys');
+      }
+    };
+    // Persist key shares directly, so a failure in another message handler cannot lose them, and
+    // resync straight away: the library does not reapply patches it could not decrypt earlier.
+    const storeAppStateKeys=async(shared:proto.Message.IAppStateSyncKey[])=>{
+      const data:{[id:string]:proto.Message.IAppStateSyncKeyData}={};
+      for(const {keyId,keyData} of shared) if(keyId?.keyId && keyData) data[Buffer.from(keyId.keyId).toString('base64')]=keyData;
+      if(!keys || !Object.keys(data).length || generation!==this.generation) return;
+      await keys.set({'app-state-sync-key':data});
+      logger().info({keys:Object.keys(data).length},'stored app state keys from primary device');
+      if(this.status==='connected') await resyncAppState(socket); else resyncWhenOpen=true;
+    };
     let socket:WASocket;
     try {
-      socket=this.runtime.makeSocket({auth:state,version:version.version,logger:pino({level:'silent'}),printQRInTerminal:false,markOnlineOnConnect:false,syncFullHistory:true,shouldSyncHistoryMessage:()=>true,shouldIgnoreJid:jid=>typeof jid==='string' && jid.endsWith('@bot'),connectTimeoutMs:20000,defaultQueryTimeoutMs:20000});
+      socket=this.runtime.makeSocket({auth:state,version:version.version,logger:logger(),printQRInTerminal:false,markOnlineOnConnect:false,syncFullHistory:true,shouldSyncHistoryMessage:()=>true,shouldIgnoreJid:jid=>typeof jid==='string' && jid.endsWith('@bot'),connectTimeoutMs:20000,defaultQueryTimeoutMs:20000});
     } catch(error) {
       this.status='disconnected';this.error=error instanceof Error?error.message:String(error);return;
     }
@@ -109,7 +159,11 @@ export class WhatsAppTransport implements MessagingTransport {
     socket.ev.on('connection.update',update=>{
       if(generation!==this.generation) return;
       if(update.qr) { clearTimeout(this.handshakeTimer);this.qr=update.qr;this.status='pairing';this.error=null; }
-      if(update.connection==='open') { clearTimeout(this.handshakeTimer);attempt=0;this.status='connected';this.qr=null;this.error=null; }
+      if(update.connection==='open') {
+        clearTimeout(this.handshakeTimer);attempt=0;this.status='connected';this.qr=null;this.error=null;
+        if(resyncWhenOpen) {resyncWhenOpen=false;void resyncAppState(socket).catch(error=>logger().warn({error},'app state resync failed'));}
+        void requestAppStateKeys();
+      }
       if(update.connection==='close') {
         clearTimeout(this.handshakeTimer);
         this.qr=null;
@@ -146,6 +200,12 @@ export class WhatsAppTransport implements MessagingTransport {
     const acceptMessages=(messages:proto.IWebMessageInfo[],type:string)=>{
       if(generation!==this.generation) return;
       rememberBots(messages);
+      for(const item of messages) {
+        const share=item.key?.fromMe ? item.message?.protocolMessage : undefined;
+        if(share?.type===proto.Message.ProtocolMessage.Type.APP_STATE_SYNC_KEY_SHARE && share.appStateSyncKeyShare?.keys?.length) {
+          void storeAppStateKeys(share.appStateSyncKeyShare.keys).catch(error=>logger().warn({error},'could not store app state keys'));
+        }
+      }
       updateChats(()=>this.chats.updateMessages(messages));
       if(type!=='notify') return;
       for(const item of messages) {
@@ -157,8 +217,9 @@ export class WhatsAppTransport implements MessagingTransport {
         const image=thumbnail?.length ? `data:image/jpeg;base64,${Buffer.from(thumbnail).toString('base64')}` : undefined;
         if(!text && !image) continue;
         // Deduplicate retransmitted notifications before assigning a new cursor.
-        if(this.inbox.some(x=>x.message.id===item.key.id && x.recipient===jid)) continue;
-        this.inbox.push({sequence:++this.sequence,recipient:jid,message:{id:item.key.id,text:text || 'Image',image,timestamp:new Date().toISOString()}});
+        const id=item.key.id;
+        if(this.inbox.some(x=>x.message.id===id && x.recipient===jid)) continue;
+        this.inbox.push({sequence:++this.sequence,recipient:jid,message:{id,text:text || 'Image',image,timestamp:new Date().toISOString()}});
       }
       if(this.inbox.length>10000) this.inbox.splice(0,this.inbox.length-10000);
     };

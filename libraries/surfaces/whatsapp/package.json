@@ -18,7 +18,7 @@
   "dependencies": {
     "@agent-squad/kernel": "0.1.0",
     "zod": "^3.25.76",
-    "@whiskeysockets/baileys": "6.7.23",
+    "@whiskeysockets/baileys": "7.0.0-rc14",
     "pino": "^9.6.0"
   },
   "license": "MIT"

@@ -26,3 +26,5 @@ export function createWhatsAppSurface(options:{directory:string;transport?:Messa
     },
   };
 }
+
+export { readLocalBotSecret, localMessageSecret } from './whatsapp-pairing.js';
