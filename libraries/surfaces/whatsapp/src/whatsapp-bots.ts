@@ -4,7 +4,7 @@ import { readFileSync, writeFileSync, renameSync } from 'node:fs';
 import { join } from 'node:path';
 import { proto, generateMessageIDV2, encodeSignedDeviceIdentity, getBinaryNodeChild, jidNormalizedUser, jidDecode, jidEncode, unpadRandomMax16, type BinaryNode, type WASocket } from '@whiskeysockets/baileys';
 
-type Secret = { bot:string; sender:string; secret:string; root?:boolean; session?:boolean; thread?:string };
+type Secret = { bot:string; sender:string; secret:string; root?:boolean; session?:boolean };
 // WhatsApp's default Muse/Hatch bot uses a pairing-secret envelope.
 const museBotAddress='1807055946647697@bot';
 const botAddress=(jid:string)=>/^[1-9]\d{0,29}@bot$/.test(jid);
@@ -71,7 +71,7 @@ export class WhatsAppBots {
     try {
       const saved=JSON.parse(readFileSync(join(directory,'bot-message-secrets.json'),'utf8'));
       for(const [id,value] of Object.entries(saved) as [string,Secret][]) {
-        if(botAddress(value.bot) && typeof value.sender==='string' && typeof value.secret==='string' && Buffer.from(value.secret,'base64').length===32) this.secrets[id]=value;
+        if(botAddress(value.bot) && typeof value.sender==='string' && typeof value.secret==='string' && Buffer.from(value.secret,'base64').length===32) this.secrets[id]={bot:value.bot,sender:value.sender,secret:value.secret,root:value.root,session:value.session};
       }
     } catch {}
   }
@@ -93,10 +93,8 @@ export class WhatsAppBots {
       // A chat's registration prompt carries its secret inside a wrapper, not beside the text.
       const secret=messageSecret(message);
       if(!secret) {this.log({id,paths:fieldPaths(message)},'own bot message without a secret');continue;}
-      // Muse keys every reply to the welcome request that paired it, so that secret is the session.
-      // The phone tags each Muse prompt with its AI thread; reuse it so the Mac joins the same conversation.
-      const thread=message?.messageContextInfo?.threadId?.find(t=>t.threadKey?.id)?.threadKey?.id ?? undefined;
-      this.secrets[id]={bot,sender:jidNormalizedUser(sender),secret:Buffer.from(secret).toString('base64'),root:true,...(thread?{thread}:{})};changed=true;
+      // Preserve original prompt secrets: later replies may still reference them.
+      this.secrets[id]={bot,sender:jidNormalizedUser(sender),secret:Buffer.from(secret).toString('base64'),root:true};changed=true;
       this.log({id},'remembered a bot prompt secret');
     }
     if(changed) this.save();

@@ -119,7 +119,7 @@ Muse can send a first response, intermediate edits, and a final edit. The connec
 
 Decoded replies go straight into the surface’s inbox rather than being re-emitted into Baileys’ buffered event stream, where they could remain stuck. Retransmitted notifications are deduplicated by message ID and recipient before receiving a new cursor. Offline/history messages can update discovery and keys but are not treated as fresh task replies.
 
-The kernel captures a cursor before sending and polls for newer replies. After a reply arrives, it waits for the agent’s configured quiet interval before marking the task complete, so “working” can briefly remain visible after text appears. Canceling stops local waiting; it cannot recall a sent message or stop the remote bot. WhatsApp supplies a shared conversation rather than isolated A2A sessions, so a new Agent Squad session does not create a new remote bot chat.
+The kernel captures a cursor before sending and polls for newer replies. After a reply arrives, it waits for the agent’s configured quiet interval before marking the task complete, so “working” can briefly remain visible after text appears. Canceling stops local waiting; it cannot recall a sent message or stop the remote bot. WhatsApp supplies a shared conversation rather than isolated A2A sessions, so a new Agent Squad session does not create a new remote bot chat. Agent Squad does not send an explicit Muse AI thread ID. Reusing the pairing message’s encryption key authenticates messages; it does not establish which AI thread Muse selects or guarantee continuity with the phone’s AI context. The live round-trip checks verify message delivery and replies, not cross-device AI thread continuity.
 
 ## Storage and security
 

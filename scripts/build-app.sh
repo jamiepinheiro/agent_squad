@@ -74,8 +74,8 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 <key>CFBundleIconFile</key><string>AppIcon</string>
 <key>CFBundleIconName</key><string>AppIcon</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>0.1.3</string>
-<key>CFBundleVersion</key><string>4</string>
+<key>CFBundleShortVersionString</key><string>0.1.4</string>
+<key>CFBundleVersion</key><string>5</string>
 <key>LSMinimumSystemVersion</key><string>14.0</string>
 <key>NSHighResolutionCapable</key><true/>
 <key>NSAppleEventsUsageDescription</key><string>Agent Squad sends tasks to agents you register in Messages.</string>
