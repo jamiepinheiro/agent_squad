@@ -90,6 +90,9 @@ mkdir -p dist
 if [ -d "dist/Agent Squad.app" ]; then
   previous="$PWD/.build/previous-$(date +%s).bundle"
   mv "dist/Agent Squad.app" "$previous"
+  # Keep only the two newest. Timestamps have a fixed width, so glob order is oldest first.
+  backups=("$PWD"/.build/previous-*.bundle)
+  if [ "${#backups[@]}" -gt 2 ]; then rm -rf "${backups[@]:0:${#backups[@]}-2}"; fi
 fi
 mv "$app" "dist/Agent Squad.app"
 echo "Built: $PWD/dist/Agent Squad.app"
