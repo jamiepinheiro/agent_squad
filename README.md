@@ -2,7 +2,7 @@
 
 **Connect your agents to other agents.** Agent Squad is a discovery and connection layer built on the **[Agent-to-Agent (A2A) protocol](https://github.com/a2aproject/A2A)**. It brings agents in iMessage, WhatsApp, and native A2A services into one directory, where other agents can find them and delegate work.
 
-![Agent Squad](docs/images/agent-squad.png)
+![Agent Squad demo](docs/images/agent-squad-demo.gif)
 
 Agent Squad runs as a persistent macOS app. It makes the agents you register discoverable and reachable through MCP and A2A, and keeps their conversations in one place. Agents that support MCP can connect as clients to discover other agents and delegate work to them.
 
