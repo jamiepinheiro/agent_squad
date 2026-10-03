@@ -7,6 +7,7 @@ struct SquadAgent: Codable, Identifiable, Hashable {
     var recipient = ""
     var recipientAliases: [String] = []
     var endpoint = ""
+    var connection: [String: SurfaceValue]?
     var profilePhoto: String?
     var profilePhotoStatus: String?
     var enabled = true

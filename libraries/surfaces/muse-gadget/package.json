@@ -1,5 +1,5 @@
 {
-  "name": "@agent-squad/gateway",
+  "name": "@agent-squad/surface-muse-gadget",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -17,11 +17,7 @@
   },
   "dependencies": {
     "@agent-squad/kernel": "0.1.0",
-    "@agent-squad/surface-imessage": "0.1.0",
-    "@agent-squad/surface-whatsapp": "0.1.0",
-    "@agent-squad/surface-a2a": "0.1.0",
-    "zod": "^3.25.76",
-    "@agent-squad/surface-muse-gadget": "0.1.0"
+    "ws": "^8.22.0"
   },
   "license": "MIT"
 }

@@ -49,7 +49,13 @@ for library in libraries/kernel libraries/surfaces/*; do
   mkdir -p "$app/Contents/Resources/$library"
   rsync -a --delete "$library/dist/" "$app/Contents/Resources/$library/dist/"
   cp "$library/package.json" "$app/Contents/Resources/$library/"
+  for notice in "$library"/LICENSE* "$library"/NOTICE; do
+    [ ! -f "$notice" ] || cp "$notice" "$app/Contents/Resources/$library/"
+  done
 done
+mkdir -p "$app/Contents/Resources/MuseSetup"
+cp docs/muse-gadget.md "$app/Contents/Resources/MuseSetup/README.md"
+cp libraries/surfaces/muse-gadget/scripts/export-pairing.py "$app/Contents/Resources/MuseSetup/"
 cp package.json package-lock.json "$app/Contents/Resources/"
 # Production dependencies are copied from the lockfile installation; no network at app launch.
 python3 scripts/package-dependencies.py "$app/Contents/Resources"
@@ -74,8 +80,8 @@ cat > "$app/Contents/Info.plist" <<'PLIST'
 <key>CFBundleIconFile</key><string>AppIcon</string>
 <key>CFBundleIconName</key><string>AppIcon</string>
 <key>CFBundlePackageType</key><string>APPL</string>
-<key>CFBundleShortVersionString</key><string>0.1.4</string>
-<key>CFBundleVersion</key><string>5</string>
+<key>CFBundleShortVersionString</key><string>0.1.5</string>
+<key>CFBundleVersion</key><string>6</string>
 <key>LSMinimumSystemVersion</key><string>14.0</string>
 <key>NSHighResolutionCapable</key><true/>
 <key>NSAppleEventsUsageDescription</key><string>Agent Squad sends tasks to agents you register in Messages.</string>

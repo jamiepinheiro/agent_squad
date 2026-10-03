@@ -98,7 +98,7 @@ import Observation
     }
     private func request(_ path: String, body: [String: Any]? = nil) async throws -> Data {
         guard let baseURL else { throw NSError(domain: "Gateway", code: 1, userInfo: [NSLocalizedDescriptionKey: "The gateway is still starting."]) }
-        var request = URLRequest(url: baseURL.appendingPathComponent(path), timeoutInterval: 35)
+        var request = URLRequest(url: baseURL.appendingPathComponent(path), timeoutInterval: body?["action"] as? String == "musePairingImport" ? 120 : 35)
         request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         if let body { request.httpMethod = "POST"; request.httpBody = try JSONSerialization.data(withJSONObject: body); request.setValue("application/json", forHTTPHeaderField: "Content-Type") }
         let (data, response) = try await URLSession.shared.data(for: request)

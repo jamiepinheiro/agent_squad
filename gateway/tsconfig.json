@@ -19,6 +19,9 @@
       "path": "../libraries/surfaces/whatsapp"
     },
     {
+      "path": "../libraries/surfaces/muse-gadget"
+    },
+    {
       "path": "../libraries/surfaces/a2a"
     }
   ]

@@ -136,11 +136,13 @@ export class Router {
     const session=this.get(agentId,id); const agent=this.agent(agentId);
     if(!this.turns.has(id) && !['input-required','interrupted'].includes(session.status)) return session;
     const surface=this.surfaces.get(agent.adapterType);
+    let cancellationError:string|undefined;
     if(surface.kind==='task' && session.remoteTaskId) {
       const result=await surface.tasks.cancel(agent,session.remoteTaskId);
       if(result.status!=='canceled') fail('The remote agent did not confirm cancellation.');
+      cancellationError=result.error;
     }
-    session.status='canceled'; session.error=surface.kind==='task' ? (session.remoteTaskId ? undefined : 'Stopped waiting before a remote task ID was available. The remote agent may still be working.') : 'Stopped waiting. The message was already sent; the remote agent may continue working.';
+    session.status='canceled'; session.error=surface.kind==='task' ? (session.remoteTaskId ? cancellationError : 'Stopped waiting before a remote task ID was available. The remote agent may still be working.') : 'Stopped waiting. The message was already sent; the remote agent may continue working.';
     this.turns.get(id)?.abort(); this.touch(session); return session;
   }
   resume(agentId:string,id:string) { return this.get(agentId,id); }

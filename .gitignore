@@ -18,6 +18,9 @@ __pycache__/
 # Private runtime data, signing material, and local verification
 **/test/
 **/tests/
+# Public synthetic Muse Gadget tests contain no account captures.
+!libraries/surfaces/muse-gadget/tests/
+!libraries/surfaces/muse-gadget/tests/*.test.mjs
 **/scripts/test-*
 **/scripts/smoke*
 *.p12
@@ -35,3 +38,6 @@ creds.json
 bot-message-secrets.json
 recent-chats.json
 release-private/
+
+# Portable device credentials
+muse-pairing*.json

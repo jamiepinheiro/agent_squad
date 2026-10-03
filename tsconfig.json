@@ -14,6 +14,9 @@
       "path": "libraries/surfaces/a2a"
     },
     {
+      "path": "libraries/surfaces/muse-gadget"
+    },
+    {
       "path": "gateway"
     }
   ]

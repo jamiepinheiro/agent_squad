@@ -12,7 +12,7 @@ struct AgentEditor: View {
     private var photoLoading: Bool { refreshingPhoto || savedAgent?.profilePhotoStatus == "loading" }
     private var connectionChanged: Bool {
         guard let savedAgent else { return false }
-        return agent.adapterType != savedAgent.adapterType || agent.recipient != savedAgent.recipient || agent.endpoint != savedAgent.endpoint || !credential.isEmpty
+        return agent.adapterType != savedAgent.adapterType || agent.recipient != savedAgent.recipient || agent.endpoint != savedAgent.endpoint || agent.connection != savedAgent.connection || !credential.isEmpty
     }
     @State private var confirmRemoval = false
     @State private var credential = ""

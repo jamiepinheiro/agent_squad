@@ -1,0 +1,9 @@
+Muse Gadget protocol implementation
+Based on the Muse Gadget SDK by Meta Platforms, Inc. and affiliates.
+Copyright (c) Meta Platforms, Inc. and affiliates.
+https://github.com/facebookincubator/muse-gadget-sdk
+Reference revision: 468e5ba629f988ad107ba472555a8b632faac0d3
+
+The pairing and Noise protocol code has been adapted to TypeScript and macOS
+by Agent Squad contributors. The original SDK is licensed under Apache 2.0;
+see LICENSE-MUSE-SDK.

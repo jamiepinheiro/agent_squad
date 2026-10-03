@@ -6,6 +6,21 @@ import ServiceManagement
     @MainActor static func main() {
         let arguments = Array(CommandLine.arguments.dropFirst())
         if let status = NativeSurfaces.handle(arguments) { exit(status) }
+        if arguments == ["--muse-credential-write"] {
+            do {
+                var data = Data()
+                while data.count <= 65536 {
+                    guard let chunk = try FileHandle.standardInput.read(upToCount: min(4096, 65537 - data.count)), !chunk.isEmpty else { break }
+                    data.append(chunk)
+                }
+                guard data.count <= 65536,
+                      let object = try JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      object["device"] is [String: Any], object["sdkToken"] is String,
+                      let text = String(data: data, encoding: .utf8) else { exit(1) }
+                try Keychain.save(text, account: "muse-gadget.native")
+                exit(0)
+            } catch { exit(1) }
+        }
         if arguments.first == "--credential-read", arguments.count == 2 {
             do {
                 let value = try Keychain.read(account: arguments[1])

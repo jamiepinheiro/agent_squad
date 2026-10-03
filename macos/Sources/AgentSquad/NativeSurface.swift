@@ -34,7 +34,7 @@ func connectionCard<Content: View>(title: String, symbol: String, subtitle: Stri
 }
 
 /// Opaque connector state. Each surface decodes only the fields it owns.
-indirect enum SurfaceValue: Codable {
+indirect enum SurfaceValue: Codable, Hashable {
     case string(String), number(Double), bool(Bool), object([String: SurfaceValue]), array([SurfaceValue]), null
     init(from decoder: Decoder) throws {
         let value = try decoder.singleValueContainer()

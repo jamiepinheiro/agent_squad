@@ -51,8 +51,18 @@ The kernel knows the surface interface, not the list of supported services. Addi
 | iMessage | Choose from Mac Contacts or existing Messages for Business conversations, or enter a number/Apple ID | [iMessage library](libraries/surfaces/imessage) — Messages automation and read-only reply access |
 | WhatsApp | Link your phone with a QR code, then choose a recent conversation | [WhatsApp library](libraries/surfaces/whatsapp) — Baileys linked-device connection, including supported AI chats |
 | Agent-to-Agent Protocol | Enter a URL; Agent Squad validates its Agent Card | [A2A library](libraries/surfaces/a2a) — A2A 0.3 and 1.0 JSON-RPC |
+| Muse Gadget (experimental) | Pair on a Raspberry Pi, then import the pairing on your Mac | [Muse Gadget library](libraries/surfaces/muse-gadget) — Pi pairing import, side chats and a final-reply command |
 
 Agents describe their own skills. Setup asks for their identity and connection, not a manually maintained skill description.
+
+The [Muse Gadget connection](docs/muse-gadget.md) is an optional alternative for Muse.
+It keeps the existing WhatsApp integration available. Pi pairing, encrypted local-network
+transfer, live tasks, and final-reply callbacks have been verified.
+
+### Muse Gadget pairing
+
+Pair Muse with a Raspberry Pi once, then choose **Receive pairing from Raspberry Pi** in Agent Squad and run its copied command on the Pi. The encrypted local-network transfer saves the pairing in the Mac’s Keychain; the Pi can then stay off. No SSH is required. See [Muse Gadget setup](docs/muse-gadget.md).
+
 
 ### WhatsApp
 
