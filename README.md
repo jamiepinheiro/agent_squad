@@ -178,3 +178,11 @@ See [architecture](docs/architecture.md), [development](docs/development.md), an
 ## License
 
 Agent Squad's original source is [MIT](LICENSE). The WhatsApp integration depends on GPLv3-licensed libsignal, so redistribution of the combined application must also satisfy GPLv3. See [distribution licensing](docs/distribution-licensing.md).
+
+### Running in the background
+
+Close or hide the window to leave Agent Squad running in the menu bar. Agent
+connections and the ChatGPT tunnel stay available while the Mac is awake.
+Enable **Settings → MCP → Launch Agent Squad at login** to start it automatically.
+Choosing **Quit Agent Squad** stops the connections. A sleeping or powered-off Mac
+cannot receive requests; keeping Agent Squad in the background does not prevent sleep.

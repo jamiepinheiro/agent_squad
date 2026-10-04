@@ -14,6 +14,21 @@ import Observation
     private var refreshTask: Task<Void, Never>?
     private var starting = false
     private var startupDiagnostic: String?
+    // The gateway serves remote requests even with no visible app windows.
+    private var connectionActivity: NSObjectProtocol?
+
+    private func keepConnectionsActive() {
+        guard connectionActivity == nil else { return }
+        connectionActivity = ProcessInfo.processInfo.beginActivity(
+            options: .userInitiatedAllowingIdleSystemSleep,
+            reason: "Keep Agent Squad available for incoming agent requests"
+        )
+    }
+    private func releaseConnectionActivity() {
+        guard let activity = connectionActivity else { return }
+        ProcessInfo.processInfo.endActivity(activity)
+        connectionActivity = nil
+    }
 
     func start() {
         guard process == nil, !starting else { return }
@@ -26,6 +41,7 @@ import Observation
             error = "The bundled gateway is missing. Build the app with scripts/build-app.sh."; starting = false; return
         }
         let child = Process()
+        child.qualityOfService = .userInitiated
         child.executableURL = node
         child.arguments = [script.path]
         child.currentDirectoryURL = resources
@@ -43,11 +59,13 @@ import Observation
                 guard let self, self.process === process else { return }
                 self.process = nil; self.baseURL = nil; self.state = nil; self.starting = false
                 self.refreshTask?.cancel()
+                self.releaseConnectionActivity()
                 self.error = "The gateway stopped (exit \(process.terminationStatus)). Restart it from Settings → MCP." + (self.startupDiagnostic.map { "\n" + $0 } ?? "")
             }
         }
+        keepConnectionsActive()
         do { try child.run(); process = child }
-        catch { self.error = error.localizedDescription; starting = false; return }
+        catch { releaseConnectionActivity(); self.error = error.localizedDescription; starting = false; return }
         Task { [weak self, weak child] in
             try? await Task.sleep(for: .seconds(20))
             guard let self, let child, self.process === child, self.baseURL == nil else { return }
@@ -119,7 +137,7 @@ import Observation
             do { try await action(name, values) } catch { self.error = error.localizedDescription }
         }
     }
-    func stop() { refreshTask?.cancel(); refreshTask = nil; let child = process; process = nil; try? input?.fileHandleForWriting.close(); input = nil; child?.terminate(); state = nil; baseURL = nil }
+    func stop() { releaseConnectionActivity(); refreshTask?.cancel(); refreshTask = nil; let child = process; process = nil; try? input?.fileHandleForWriting.close(); input = nil; child?.terminate(); state = nil; baseURL = nil }
     func restart() {
         let previous = process
         stop(); starting = false; error = nil; launchStatus = "Restarting your squad…"
