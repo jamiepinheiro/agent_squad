@@ -21,6 +21,8 @@ __pycache__/
 # Public synthetic Muse Gadget tests contain no account captures.
 !libraries/surfaces/muse-gadget/tests/
 !libraries/surfaces/muse-gadget/tests/*.test.mjs
+!libraries/kernel/tests/
+!libraries/kernel/tests/*.test.mjs
 **/scripts/test-*
 **/scripts/smoke*
 *.p12

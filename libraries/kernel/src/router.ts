@@ -146,6 +146,25 @@ export class Router {
     this.turns.get(id)?.abort(); this.touch(session); return session;
   }
   resume(agentId:string,id:string) { return this.get(agentId,id); }
+  recover() {
+    for(const session of this.store.state.sessions) {
+      const agent=this.agents().find(a=>a.id===session.agentId);
+      const surface=agent && this.surfaces.find(agent.adapterType);
+      if(!agent || surface?.kind!=='task' || !surface.resumeOnRestart || session.status!=='interrupted' || !session.remoteTaskId) continue;
+      const controller=new AbortController();this.turns.set(session.id,controller);
+      session.status='working';delete session.error;this.touch(session);
+      const job=(async()=>{
+        while(session.status==='working') {
+          const result=await surface.tasks.get(agent,session.remoteTaskId!,controller.signal);
+          controller.signal.throwIfAborted();this.applyUpdate(session,result);
+          if(session.status==='working') await delay(this.pollMilliseconds,undefined,{signal:controller.signal});
+        }
+      })().catch(error=>{
+        if(!controller.signal.aborted) {session.status='failed';session.error=messageOf(error);this.touch(session);}
+      }).finally(()=>{this.turns.delete(session.id);this.jobs.delete(session.id);});
+      this.jobs.set(session.id,job);
+    }
+  }
   private touch(session:Session) { session.updatedAt=new Date().toISOString();this.store.save(); }
   async shutdown() {
     for(const [id,controller] of this.turns) {

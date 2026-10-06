@@ -3,6 +3,7 @@ import { timingSafeEqual } from 'node:crypto';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import type { Protocol } from './protocol.js';
 import { messageOf } from './types.js';
+import { EventError } from './webhook.js';
 
 export function application(protocol:Protocol,controlToken:string,state:()=>unknown,action:(input:any)=>Promise<unknown>,trustedHosts:string[]=[]) {
   const app=express();app.disable('x-powered-by');
@@ -29,6 +30,21 @@ export function application(protocol:Protocol,controlToken:string,state:()=>unkn
     catch(error) {res.status(400).json({error:messageOf(error)});}
   });
   app.post('/mcp',async(req,res)=>{
+    const rpc=req.body;
+    const metaVersion=rpc?.params?._meta?.['io.modelcontextprotocol/protocolVersion'];
+    const headerVersion=req.headers['mcp-protocol-version'];
+    if(headerVersion==='2026-07-28' || metaVersion==='2026-07-28' || rpc?.method==='server/discover' || (typeof rpc?.method==='string' && rpc.method.startsWith('events/'))) {
+      try {
+        if(!rpc || rpc.jsonrpc!=='2.0' || typeof rpc.method!=='string' || !['string','number'].includes(typeof rpc.id) || (rpc.params!==undefined && (!rpc.params || typeof rpc.params!=='object' || Array.isArray(rpc.params)))) throw new EventError('Invalid request.',-32600);
+        if(headerVersion && metaVersion && headerVersion!==metaVersion) throw new EventError('Protocol version header mismatch.',-32020);
+        if(headerVersion && headerVersion!=='2026-07-28') throw new EventError('Events require MCP 2026-07-28.');
+        if((req.headers['mcp-method'] && req.headers['mcp-method']!==rpc.method) || (req.headers['mcp-name'] && req.headers['mcp-name']!==rpc.params?.name)) throw new EventError('Routing header mismatch.',-32020);
+        res.json({jsonrpc:'2.0',id:rpc.id,result:await protocol.modern(rpc.method,rpc.params,`http://${req.headers.host}`)});
+      } catch(error) {
+        res.json({jsonrpc:'2.0',id:rpc?.id ?? null,error:{code:error instanceof EventError?error.code:-32602,message:messageOf(error),...(error instanceof EventError && error.data?{data:error.data}:{})}});
+      }
+      return;
+    }
     const server=protocol.mcp(`http://${req.headers.host}`);
     const transport=new StreamableHTTPServerTransport({sessionIdGenerator:undefined,enableJsonResponse:true});
     res.on('close',()=>{void transport.close();void server.close();});

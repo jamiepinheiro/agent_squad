@@ -1,11 +1,14 @@
 import { randomUUID } from 'node:crypto';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { z } from 'zod';
+import { zodToJsonSchema } from 'zod-to-json-schema';
+import { EventAgents, registrationSchema, resultSchema } from './events.js';
+import { EventError } from './webhook.js';
 import type { Router } from './router.js';
 import { fail, messageOf, type Session } from './types.js';
 
 export class Protocol {
-  constructor(readonly router:Router) {}
+  constructor(readonly router:Router,readonly events?:EventAgents) {}
   async card(agentId:string,baseURL:string) {
     const agent=this.router.agent(agentId);
     const surface=this.router.surfaces.get(agent.adapterType);
@@ -48,15 +51,15 @@ export class Protocol {
     if(typeof params?.id!=='string') fail('Task id is required.');
     return this.task(method==='tasks/cancel' ? await this.router.cancel(agentId,params.id) : this.router.get(agentId,params.id));
   }
-  mcp(baseURL='http://127.0.0.1:9847') {
-    const server=new McpServer({name:'agent-squad',version:'0.1.0'});
+  private tools(baseURL='http://127.0.0.1:9847') {
+    const tools:{name:string;description:string;inputSchema:any;annotations:any;call:(args:any)=>Promise<any>}[]=[];
     const agent={agent_id:z.string().describe('Registered agent ID from list_agents')};
     const session={...agent,session_id:z.string()};
     const register=(name:string,description:string,inputSchema:any,readOnly:boolean,action:(args:any)=>unknown)=>{
-      server.registerTool(name,{description,inputSchema,annotations:{readOnlyHint:readOnly,destructiveHint:!readOnly,idempotentHint:readOnly,openWorldHint:true}},async(args:any)=>{
-        try {const result=await action(args); return {content:[{type:'text' as const,text:JSON.stringify(result)}]};}
+      tools.push({name,description,inputSchema,annotations:{readOnlyHint:readOnly,destructiveHint:!readOnly,idempotentHint:readOnly,openWorldHint:true},call:async(args:any)=>{
+        try {const result=await action(z.object(inputSchema).strict().parse(args)); return {content:[{type:'text' as const,text:JSON.stringify(result)}]};}
         catch(error) {return {isError:true,content:[{type:'text' as const,text:messageOf(error)}]};}
-      });
+      }});
     };
     register('list_agents','List agent identities and connection types. Use get_agent_card for native A2A skills; ask messaging agents about their skills with send_prompt.',{},true,()=>this.router.agents().map(a=>({id:a.id,name:a.name,adapterType:a.adapterType,enabled:a.enabled})));
     register('get_agent_card','Read the native agent’s own A2A Agent Card, including its advertised skills. Messaging agents expose a conversation adapter card; ask them directly using send_prompt to learn their skills. This tool never sends a message.',agent,true,a=>this.card(a.agent_id,baseURL));
@@ -69,6 +72,36 @@ export class Protocol {
     register('send_message','A2A 0.3 message/send. Native agents are proxied; messaging agents accept text parts. Poll get_task for completion.',{...agent,params:z.object({message:z.object({kind:z.literal('message'),messageId:z.string(),role:z.literal('user'),parts:z.array(z.record(z.unknown())).min(1),contextId:z.string().optional(),taskId:z.string().optional()}).passthrough()}).passthrough()},false,a=>this.a2a(a.agent_id,'message/send',a.params));
     register('get_task','A2A 0.3 tasks/get.',{...agent,task_id:z.string()},true,a=>this.a2a(a.agent_id,'tasks/get',{id:a.task_id}));
     register('cancel_task','A2A 0.3 tasks/cancel. Messaging cancellation stops local waiting only.',{...agent,task_id:z.string()},false,a=>this.a2a(a.agent_id,'tasks/cancel',{id:a.task_id}));
+    if(this.events) {
+      register('register_event_agent','Join Agent Squad as an agent that receives tasks through MCP Events. Reuse a stable registration_id to reconnect without duplicates. Subscribe to the returned event and arguments using your client; registration alone does not start listening.',registrationSchema,false,a=>this.events!.register(a));
+      register('list_assigned_tasks','List pending tasks assigned to your MCP Events agent. Call after subscribing or reconnecting to recover missed events.',agent,true,a=>this.events!.pending(a.agent_id));
+      register('get_assigned_task','Read the current status, prompt and conversation of an assigned task. Only act while status is working; other statuses mean it has ended.',{...agent,task_id:z.string()},true,a=>this.events!.read(a.agent_id,a.task_id));
+      register('complete_assigned_task','Return your answer to an assigned task. Use input-required to ask the delegating agent a question, failed for an error, or completed for your final result. Identical retries are safe; ended tasks reject different results.',resultSchema,false,a=>this.events!.complete(a));
+    }
+    return tools.sort((a,b)=>a.name.localeCompare(b.name));
+  }
+  async modern(method:string,params:any={},baseURL?:string) {
+    let result:Record<string,unknown>;
+    switch(method) {
+      case 'server/discover':result={supportedVersions:['2026-07-28','2025-11-25','2025-06-18','2025-03-26'],capabilities:{tools:{},...(this.events?{events:{}}:{})},instructions:'Use register_event_agent to participate as an agent. Subscribe to agent_squad.task.assigned for its agent_id using your event-capable client.',ttlMs:300000,cacheScope:'private'};break;
+      case 'ping':result={};break;
+      case 'tools/list':
+        if(params.cursor) throw new EventError('Unknown cursor.');
+        result={tools:this.tools(baseURL).map(({call,inputSchema,...tool})=>({...tool,inputSchema:zodToJsonSchema(z.object(inputSchema),{$refStrategy:'none'})})),ttlMs:300000,cacheScope:'private'};break;
+      case 'tools/call': {
+        const tool=this.tools(baseURL).find(t=>t.name===params.name);
+        if(!tool) throw new EventError('Unknown tool.',-32602);
+        result=await tool.call(params.arguments ?? {});break;
+      }
+      default:
+        if(!this.events || !method.startsWith('events/')) throw new EventError('Method not found.',-32601);
+        result=await this.events.rpc(method,params);
+    }
+    return {...result,resultType:'complete',_meta:{'io.modelcontextprotocol/serverInfo':{name:'agent-squad',version:'0.1.7'}}};
+  }
+  mcp(baseURL='http://127.0.0.1:9847') {
+    const server=new McpServer({name:'agent-squad',version:'0.1.7'});
+    for(const {name,call,...config} of this.tools(baseURL)) server.registerTool(name,config,call);
     return server;
   }
 }

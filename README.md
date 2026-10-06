@@ -36,13 +36,13 @@ ChatGPT ── MCP via tunnel ─────┤
                                          agent endpoints
 ```
 
-Connecting as a client does not automatically register an agent to receive work. An agent can participate in both roles if it can call the MCP server and is registered through one of the supported surfaces below. ChatGPT currently participates only as a client.
+Connecting as a client does not automatically register an agent to receive work. An agent can participate in both roles if it can call the MCP server and is registered through one of the supported surfaces below. With **MCP Events**, an event-capable client can register an agent, subscribe to incoming tasks, and return answers. This includes supported ChatGPT Work cloud chats and dots; ordinary chats remain dispatch-only.
 
 The **surface bridge** is the adaptation layer implemented together by the kernel's router and the surface libraries. It turns iMessage and WhatsApp conversations into an A2A-style interface for sending messages, tracking tasks, collecting replies, and canceling local waits. The native A2A surface translates protocol versions and normalizes remote tasks and replies into that same model. Messaging agents do not need to implement A2A themselves.
 
 The **kernel** owns agents, sessions, task execution, persistence, and the public MCP/A2A interfaces. A **surface** owns everything needed to talk through a particular service: addressing, validation, sending and receiving, connection setup, and service-specific formats.
 
-The kernel knows the surface interface, not the list of supported services. Adding a surface does not require editing the router or adding another branch to its agent schema.
+External services implement the surface interface. MCP Events is built into the kernel because it connects the public MCP protocol to the local task inbox.
 
 ## Supported surfaces
 
@@ -52,6 +52,7 @@ The kernel knows the surface interface, not the list of supported services. Addi
 | WhatsApp | Link your phone with a QR code, then choose a recent conversation | [WhatsApp library](libraries/surfaces/whatsapp) — Baileys linked-device connection, including supported AI chats |
 | Agent-to-Agent Protocol | Enter a URL; Agent Squad validates its Agent Card | [A2A library](libraries/surfaces/a2a) — A2A 0.3 and 1.0 JSON-RPC |
 | Muse Gadget (experimental) | Pair on a Raspberry Pi, then import the pairing on your Mac | [Muse Gadget library](libraries/surfaces/muse-gadget) — Pi pairing import, side chats and a final-reply command |
+| MCP Events | Copy a setup prompt into an event-capable MCP client | [MCP Events](docs/mcp-events.md) — registration, task webhooks, and result callbacks |
 
 Agents describe their own skills. Setup asks for their identity and connection, not a manually maintained skill description.
 
@@ -62,6 +63,10 @@ transfer, live tasks, and final-reply callbacks have been verified.
 ### Muse Gadget pairing
 
 Pair Muse with a Raspberry Pi once, then choose **Receive pairing from Raspberry Pi** in Agent Squad and run its copied command on the Pi. The encrypted local-network transfer saves the pairing in the Mac’s Keychain; the Pi can then stay off. No SSH is required. See [Muse Gadget setup](docs/muse-gadget.md).
+
+### MCP Events agents
+
+Choose **Add Agents → MCP Events** or **Settings → Connectors → MCP Events**. Name the agent and copy its setup prompt into a client connected to Agent Squad. The prompt asks it to register, subscribe to tasks, and send back results. Its card appears after registration; the connector shows **Listening for tasks** only after callback verification succeeds. See [setup and recovery](docs/mcp-events.md).
 
 
 ### WhatsApp
@@ -171,7 +176,7 @@ The main tools are `list_agents`, `get_agent_card`, `create_session`, `send_prom
 - `npm run check` type-checks and builds every library. It does not send messages.
 - `npm run app` packages the workspace libraries and native sources into a signed app.
 - Agents, sessions, and pairing state live in `~/Library/Application Support/Agent Squad/`. WhatsApp credentials and bot secrets are stored in protected local files; see [WhatsApp storage and security](docs/whatsapp.md#storage-and-security). Other app-managed credentials use macOS Keychain.
-- Messaging completion uses a quiet interval. Canceling stops local waiting and cannot recall a message. Interrupted tasks are never automatically resent.
+- Messaging completion uses a quiet interval. Canceling stops local waiting and cannot recall a message. Interrupted messaging tasks are never automatically resent. MCP Events assignments and subscriptions persist across restarts; webhook retries retain the same event ID.
 
 See [architecture](docs/architecture.md), [development](docs/development.md), and [verification](docs/verification.md).
 

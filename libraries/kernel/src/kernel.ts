@@ -2,6 +2,8 @@ import { Store } from './store.js';
 import { Router } from './router.js';
 import { Protocol } from './protocol.js';
 import { SurfaceRegistry, type Surface } from './surface.js';
+import { EventAgents } from './events.js';
+import type { WebhookPost } from './webhook.js';
 
 /** App use cases shared by the desktop host and any future host. */
 export class Kernel {
@@ -9,11 +11,14 @@ export class Kernel {
   readonly surfaces:SurfaceRegistry;
   readonly router:Router;
   readonly protocol:Protocol;
-  constructor(options:{directory:string;surfaces:Surface[]}) {
-    this.surfaces=new SurfaceRegistry(options.surfaces);
+  readonly events:EventAgents;
+  constructor(options:{directory:string;surfaces:Surface[];webhookPost?:WebhookPost}) {
     this.store=new Store(options.directory);
+    this.events=new EventAgents(options.directory,options.webhookPost);
+    this.surfaces=new SurfaceRegistry([...options.surfaces,this.events.surface()]);
     this.router=new Router(this.store,this.surfaces);
-    this.protocol=new Protocol(this.router);
+    this.events.bind(this.router);
+    this.protocol=new Protocol(this.router,this.events);
   }
   snapshot() {
     return {agents:this.store.state.agents,sessions:[...this.store.state.sessions].sort((a,b)=>b.updatedAt.localeCompare(a.updatedAt)),surfaceState:this.surfaces.appState()};
@@ -36,13 +41,15 @@ export class Kernel {
         void router.requestProfilePhoto(agent.id,true).catch(()=>{});
         return;
       }
-      case 'deleteAgent':return router.deleteAgent(String(input.agentId));
+      case 'deleteAgent': {
+        router.deleteAgent(String(input.agentId));this.events.remove(String(input.agentId));return;
+      }
       case 'createSession':return router.create(String(input.agentId));
       case 'sendPrompt':return router.send(String(input.agentId),String(input.sessionId),String(input.prompt ?? ''));
       case 'cancel':return router.cancel(String(input.agentId),String(input.sessionId));
       default:{const action=this.surfaces.action(input.action);if(!action) throw Error('Unknown action.');return action(input,router);}
     }
   }
-  async start() {await this.surfaces.start();}
+  async start() {this.router.recover();await this.surfaces.start();}
   async stop() {await this.router.shutdown();await this.surfaces.stop();}
 }

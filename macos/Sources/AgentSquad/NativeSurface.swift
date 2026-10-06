@@ -25,7 +25,7 @@ func connectionCard<Content: View>(title: String, symbol: String, subtitle: Stri
             Image(systemName: symbol).font(.title2).foregroundStyle(Color.squadGreen)
             VStack(alignment: .leading, spacing: 4) {
                 Text(title).font(.headline)
-                Text(subtitle).font(.caption).foregroundStyle(.secondary)
+                if !subtitle.isEmpty { Text(subtitle).font(.caption).foregroundStyle(.secondary) }
             }
         }
         Divider()

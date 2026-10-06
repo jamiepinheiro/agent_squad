@@ -6,6 +6,7 @@ import { Kernel, application, TunnelSchema, messageOf } from '@agent-squad/kerne
 import { createSurfaces } from './surfaces.js';
 import { readSecret } from './secrets.js';
 import { Tunnel } from './tunnel.js';
+import { tailnetHosts } from './tailnet.js';
 
 const directory=process.env.AGENT_SQUAD_DATA_DIR ?? join(homedir(),'Library','Application Support','Agent Squad');
 const kernel=new Kernel({directory,surfaces:createSurfaces({directory,helper:process.env.AGENT_SQUAD_HELPER ?? '',secret:readSecret})});
@@ -18,6 +19,8 @@ function storedToken(name:string) {
 const controlToken=process.env.AGENT_SQUAD_CONTROL_TOKEN ?? storedToken('control-token');
 const tunnel=new Tunnel(directory,readSecret);
 let endpoint='';
+const port=Number(process.env.AGENT_SQUAD_PORT ?? 9847);
+const trustedHosts=[...(process.env.AGENT_SQUAD_TRUSTED_HOSTS ?? '').split(',').map(host=>host.trim().toLowerCase()).filter(Boolean),...await tailnetHosts(port)];
 const app=application(protocol,controlToken,()=>({
   ...kernel.snapshot(),
   tunnelConfig:store.state.tunnel ?? null,tunnel:{status:tunnel.status,error:tunnel.error,healthURL:tunnel.healthURL},
@@ -29,8 +32,7 @@ const app=application(protocol,controlToken,()=>({
     case 'stopTunnel':return tunnel.stop();
     default:return kernel.action(input);
   }
-},(process.env.AGENT_SQUAD_TRUSTED_HOSTS ?? '').split(',').map(host=>host.trim().toLowerCase()).filter(Boolean));
-const port=Number(process.env.AGENT_SQUAD_PORT ?? 9847);
+},trustedHosts);
 const listener=app.listen(port,'127.0.0.1',()=>{
   const address=listener.address();if(!address || typeof address==='string') throw Error('No listener address.');
   endpoint=`http://127.0.0.1:${address.port}/mcp`;

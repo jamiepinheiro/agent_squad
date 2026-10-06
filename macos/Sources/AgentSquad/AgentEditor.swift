@@ -38,7 +38,7 @@ struct AgentEditor: View {
                     if !embedded {
                     Picker("Connection", selection: $agent.adapterType) {
                         ForEach(NativeSurfaces.all) { Text($0.name).tag($0.id) }
-                    }.pickerStyle(.segmented)
+                    }.pickerStyle(.menu)
                     }
                     TextField("Name", text: $agent.name, prompt: Text("e.g. Research assistant"))
                 }

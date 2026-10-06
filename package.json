@@ -1,6 +1,6 @@
 {
   "name": "agent-squad",
-  "version": "0.1.6",
+  "version": "0.1.7",
   "private": true,
   "type": "module",
   "scripts": {
@@ -12,7 +12,8 @@
     "postinstall": "node libraries/surfaces/whatsapp/scripts/patch-baileys.mjs",
     "predev": "npm run build",
     "release": "python3 scripts/release.py",
-    "test:muse-gadget": "npm run build && node --test libraries/surfaces/muse-gadget/tests/*.test.mjs"
+    "test:muse-gadget": "npm run build && node --test libraries/surfaces/muse-gadget/tests/*.test.mjs",
+    "test:events": "npm run build && node --test libraries/kernel/tests/*.test.mjs"
   },
   "devDependencies": {
     "@types/express": "^4.17.21",

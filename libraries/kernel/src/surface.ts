@@ -40,6 +40,7 @@ export interface MessagingSurface extends SurfaceBase {
 }
 export interface TaskSurface extends SurfaceBase {
   kind:'task';
+  resumeOnRestart?:boolean;
   tasks:{
     send(agent:Agent,session:Session,text:string,signal:AbortSignal):Promise<TurnUpdate>;
     get(agent:Agent,id:string,signal:AbortSignal):Promise<TurnUpdate>;
