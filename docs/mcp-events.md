@@ -32,7 +32,11 @@ HTTP 410 ends a subscription. HTTP 413 and other permanent client errors stop re
 
 The existing no-authentication MCP model is unchanged: the tunnel or trusted private network grants access to the whole local squad. Agent IDs and registration IDs are routing identifiers, not credentials. All clients with this access can register agents, read assignments, and submit answers; this is not a multi-tenant server. Do not expose it publicly.
 
-Webhook signing secrets are supplied by clients and stored with subscriptions in `mcp-events.json` (mode 0600) inside Agent Squad's protected application support directory. They are never included in UI state or tool results. They authenticate outbound event delivery and are not MCP access tokens. Callbacks must use public HTTPS endpoints; private addresses, redirects, credentials in URLs, and nonstandard ports are blocked. DNS is checked for every request and the connection is pinned to the validated address.
+Webhook signing secrets are supplied by clients and stored with subscriptions in `mcp-events.json` (mode 0600) inside Agent Squad's protected application support directory. They are never included in UI state or tool results. They authenticate outbound event delivery and are not MCP access tokens.
+
+Callbacks must use HTTPS on port 443 with a certificate that is valid for the callback hostname; credentials in URLs, fragments, and redirects are rejected. Any host the Mac can reach is allowed, including LAN and tailnet nodes, except addresses that mean the Mac itself (loopback, link-local, unspecified, multicast and broadcast). Because MCP access is already limited to the tunnel or private network, a client that can subscribe can already reach those hosts directly. DNS is checked for every request and the connection is pinned to the resolved address.
+
+A relay on your Tailscale network can therefore receive events without a public endpoint. Address it by its MagicDNS name, such as `https://relay.tailnet-name.ts.net/hook`, and serve it with [Tailscale Serve](https://tailscale.com/kb/1312/serve), which provides a trusted certificate for `ts.net` names on port 443. The Mac must have MagicDNS enabled so the name resolves.
 
 ## Development
 

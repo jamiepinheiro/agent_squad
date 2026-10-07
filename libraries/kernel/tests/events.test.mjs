@@ -7,7 +7,7 @@ import { createHmac, randomBytes } from 'node:crypto';
 import { setTimeout as delay } from 'node:timers/promises';
 import { Kernel } from '../dist/kernel.js';
 import { application } from '../dist/server.js';
-import { publicAddress, callbackURL, signingKey, webhookPost } from '../dist/webhook.js';
+import { allowedAddress, callbackURL, signingKey, webhookPost } from '../dist/webhook.js';
 
 const secret='whsec_'+randomBytes(32).toString('base64');
 async function fixture(t) {
@@ -122,13 +122,14 @@ test('transient retry keeps event ID; 410 disables further delivery',async t=>{
   assert.equal(f.kernel.snapshot().surfaceState.mcpEvents.agents[0].listening,false);
 });
 
-test('callback security blocks private, reserved, mapped and redirect destinations',async()=>{
-  for(const ip of ['127.0.0.1','10.0.0.2','172.16.0.1','192.168.1.1','169.254.169.254','0.0.0.0','100.64.0.1','224.0.0.1','::1','fc00::1','fe80::1','::ffff:127.0.0.1','2001:db8::1']) assert.equal(publicAddress(ip),false,ip);
-  assert.equal(publicAddress('8.8.8.8'),true);
+test('callback security blocks this Mac itself, redirects and nonstandard ports but allows LAN and tailnet hosts',async()=>{
+  for(const ip of ['127.0.0.1','127.8.8.8','169.254.169.254','0.0.0.0','224.0.0.1','255.255.255.255','::1','::','fe80::1','ff02::1','::ffff:127.0.0.1','::ffff:169.254.1.1','not-an-ip']) assert.equal(allowedAddress(ip),false,ip);
+  for(const ip of ['8.8.8.8','10.0.0.2','172.16.0.1','192.168.1.1','100.64.0.1','100.89.102.43','fc00::1','fd7a:115c:a1e0::5834:662c','2001:db8::1','::ffff:100.64.0.1']) assert.equal(allowedAddress(ip),true,ip);
   assert.throws(()=>callbackURL('https://user:pass@example.com'));
   assert.throws(()=>callbackURL('https://example.com:8080'));
   assert.throws(()=>signingKey('whsec_'+Buffer.alloc(12).toString('base64')));
-  await assert.rejects(webhookPost('https://127.0.0.1','{}',{}),/not public/);
+  await assert.rejects(webhookPost('https://127.0.0.1','{}',{}),/this Mac itself/);
+  await assert.rejects(webhookPost('https://localhost','{}',{}),/this Mac itself/);
 });
 
 test('failed verification never activates a subscription; cached verification and TTL are honored',async t=>{

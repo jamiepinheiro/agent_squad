@@ -6,11 +6,16 @@ import ipaddr from 'ipaddr.js';
 export class EventError extends Error {
   constructor(message:string,readonly code=-32602,readonly data?:Record<string,string>) {super(message);}
 }
-export function publicAddress(address:string):boolean {
+/**
+ * Reject only addresses that mean this Mac itself or no host at all. MCP access is already granted at the
+ * tunnel or private-network boundary, so a client may name any other host, including LAN and tailnet nodes.
+ * HTTPS certificate verification still binds each connection to the callback hostname.
+ */
+export function allowedAddress(address:string):boolean {
   if(!ipaddr.isValid(address)) return false;
-  const parsed=ipaddr.parse(address);
-  // IPv4-mapped, translation, transition, multicast and reserved ranges are excluded.
-  return parsed.range()==='unicast';
+  let parsed=ipaddr.parse(address);
+  if(parsed.kind()==='ipv6' && (parsed as ipaddr.IPv6).isIPv4MappedAddress()) parsed=(parsed as ipaddr.IPv6).toIPv4Address();
+  return !['unspecified','loopback','linkLocal','multicast','broadcast'].includes(parsed.range());
 }
 export function callbackURL(value:string):URL {
   let url:URL;
@@ -22,7 +27,7 @@ export type WebhookPost=(url:string,body:string,headers:Record<string,string>)=>
 export const webhookPost:WebhookPost=async(value,body,headers)=>{
   const url=callbackURL(value),hostname=url.hostname.replace(/^\[|\]$/g,'');
   const addresses=await lookup(hostname,{all:true});
-  if(!addresses.length || addresses.some(a=>!publicAddress(a.address))) throw new EventError('Callback address is not public.',-32015,{reason:'address_blocked'});
+  if(!addresses.length || addresses.some(a=>!allowedAddress(a.address))) throw new EventError('Callback must not point at this Mac itself (loopback, link-local or unspecified address).',-32015,{reason:'address_blocked'});
   const address=addresses[0]!;
   return new Promise((resolve,reject)=>{
     // Pin the resolved address; TLS still verifies the original hostname. Never follow redirects.
