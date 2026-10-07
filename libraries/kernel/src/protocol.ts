@@ -97,10 +97,10 @@ export class Protocol {
         if(!this.events || !method.startsWith('events/')) throw new EventError('Method not found.',-32601);
         result=await this.events.rpc(method,params);
     }
-    return {...result,resultType:'complete',_meta:{'io.modelcontextprotocol/serverInfo':{name:'agent-squad',version:'0.1.7'}}};
+    return {...result,resultType:'complete',_meta:{'io.modelcontextprotocol/serverInfo':{name:'agent-squad',version:'0.1.8'}}};
   }
   mcp(baseURL='http://127.0.0.1:9847') {
-    const server=new McpServer({name:'agent-squad',version:'0.1.7'});
+    const server=new McpServer({name:'agent-squad',version:'0.1.8'});
     for(const {name,call,...config} of this.tools(baseURL)) server.registerTool(name,config,call);
     return server;
   }
